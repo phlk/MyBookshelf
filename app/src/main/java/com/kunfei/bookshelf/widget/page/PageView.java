@@ -10,12 +10,12 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 
+import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.bean.BookShelfBean;
 import com.kunfei.bookshelf.help.FileHelp;
 import com.kunfei.bookshelf.help.ReadBookControl;
 import com.kunfei.bookshelf.utils.ScreenUtils;
-import com.kunfei.bookshelf.utils.SharedPreferencesUtil;
-import com.kunfei.bookshelf.utils.barUtil.ImmersionBar;
+import com.kunfei.bookshelf.utils.bar.ImmersionBar;
 import com.kunfei.bookshelf.view.activity.ReadBookActivity;
 import com.kunfei.bookshelf.widget.page.animation.CoverPageAnim;
 import com.kunfei.bookshelf.widget.page.animation.HorizonPageAnim;
@@ -151,11 +151,6 @@ public class PageView extends View {
         return statusBarHeight;
     }
 
-    public Bitmap getContentBitmap(int pageOnCur) {
-        if (mPageAnim == null) return null;
-        return mPageAnim.getContentBitmap(pageOnCur);
-    }
-
     public Bitmap getBgBitmap(int pageOnCur) {
         if (mPageAnim == null) return null;
         return mPageAnim.getBgBitmap(pageOnCur);
@@ -163,9 +158,9 @@ public class PageView extends View {
 
     public void autoPrevPage() {
         if (mPageAnim instanceof ScrollPageAnim) {
-            ((ScrollPageAnim) mPageAnim).startAnim(PageAnimation.Direction.PRE);
+            ((ScrollPageAnim) mPageAnim).startAnim(PageAnimation.Direction.PREV);
         } else {
-            startHorizonPageAnim(PageAnimation.Direction.PRE);
+            startHorizonPageAnim(PageAnimation.Direction.PREV);
         }
     }
 
@@ -189,7 +184,7 @@ public class PageView extends View {
             //设置点击点
             mPageAnim.setTouchPoint(x, y);
             //设置方向
-            Boolean hasNext = hasNextPage(0);
+            boolean hasNext = hasNextPage(0);
 
             mPageAnim.setDirection(direction);
             if (!hasNext) {
@@ -205,7 +200,7 @@ public class PageView extends View {
             mPageAnim.setTouchPoint(x, y);
             mPageAnim.setDirection(direction);
             //设置方向方向
-            Boolean hashPrev = hasPrevPage();
+            boolean hashPrev = hasPrevPage();
             if (!hashPrev) {
                 ((HorizonPageAnim) mPageAnim).setNoNext(true);
                 return;
@@ -219,14 +214,14 @@ public class PageView extends View {
     public void drawPage(int pageOnCur) {
         if (!isPrepare) return;
         if (mPageLoader != null) {
-            Bitmap content = (mPageAnim instanceof ScrollPageAnim) ? getBgBitmap(pageOnCur) : getContentBitmap(pageOnCur);
-            mPageLoader.drawPage(getBgBitmap(pageOnCur), content, pageOnCur);
-            if (mPageAnim instanceof SimulationPageAnim) {
-                ((SimulationPageAnim) mPageAnim).onPageDrawn(pageOnCur);
-            }
+            mPageLoader.drawPage(getBgBitmap(pageOnCur), pageOnCur);
         }
+        invalidate();
     }
 
+    /**
+     * 绘制滚动背景
+     */
     public void drawBackground(Canvas canvas) {
         if (!isPrepare) return;
         if (mPageLoader != null) {
@@ -234,13 +229,9 @@ public class PageView extends View {
         }
     }
 
-    public void drawBackground(int pageOnCur) {
-        if (!isPrepare) return;
-        if (mPageLoader != null) {
-            mPageLoader.drawPage(getBgBitmap(pageOnCur), null, pageOnCur);
-        }
-    }
-
+    /**
+     * 绘制滚动内容
+     */
     public void drawContent(Canvas canvas, float offset) {
         if (!isPrepare) return;
         if (mPageLoader != null) {
@@ -248,11 +239,27 @@ public class PageView extends View {
         }
     }
 
+    /**
+     * 绘制横翻背景
+     */
+    public void drawBackground(int pageOnCur) {
+        if (!isPrepare) return;
+        if (mPageLoader != null) {
+            mPageLoader.drawPage(getBgBitmap(pageOnCur), pageOnCur);
+        }
+        invalidate();
+    }
+
+    /**
+     * 绘制横翻内容
+     * @param pageOnCur 相对当前页的位置
+     */
     public void drawContent(int pageOnCur) {
         if (!isPrepare) return;
         if (mPageLoader != null) {
-            mPageLoader.drawPage(null, getContentBitmap(pageOnCur), pageOnCur);
+            mPageLoader.drawPage(getBgBitmap(pageOnCur), pageOnCur);
         }
+        invalidate();
     }
 
     @Override
@@ -304,7 +311,7 @@ public class PageView extends View {
         int y = (int) event.getY();
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                if (event.getEdgeFlags() != 0 || event.getRawY() < ScreenUtils.dpToPx(20) || event.getRawY() > getDisplayMetrics().heightPixels - ScreenUtils.dpToPx(20)) {
+                if (event.getEdgeFlags() != 0 || event.getRawY() < ScreenUtils.dpToPx(5) || event.getRawY() > getDisplayMetrics().heightPixels - ScreenUtils.dpToPx(5)) {
                     actionFromEdge = true;
                     return true;
                 }
@@ -330,8 +337,8 @@ public class PageView extends View {
                 if (!isMove) {
                     //设置中间区域范围
                     if (mCenterRect == null) {
-                        mCenterRect = new RectF(mViewWidth / 3, mViewHeight / 3,
-                                mViewWidth * 2 / 3, mViewHeight * 2 / 3);
+                        mCenterRect = new RectF(mViewWidth / 3f, mViewHeight / 3f,
+                                mViewWidth * 2f / 3, mViewHeight * 2f / 3);
                     }
 
                     //是否点击了中间
@@ -346,7 +353,7 @@ public class PageView extends View {
                         return true;
                     }
 
-                    if (mPageAnim instanceof ScrollPageAnim && SharedPreferencesUtil.getBoolean("disableScrollClickTurn", false)) {
+                    if (mPageAnim instanceof ScrollPageAnim && MApplication.getConfigPreferences().getBoolean("disableScrollClickTurn", false)) {
                         return true;
                     }
                 }

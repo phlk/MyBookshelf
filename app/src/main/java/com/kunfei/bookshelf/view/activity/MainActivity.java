@@ -19,25 +19,27 @@ import android.widget.ImageView;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 
+import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.hwangjr.rxbus.RxBus;
 import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.BaseTabActivity;
+import com.kunfei.bookshelf.constant.RxBusTag;
 import com.kunfei.bookshelf.help.BookshelfHelp;
 import com.kunfei.bookshelf.help.ChapterContentHelp;
-import com.kunfei.bookshelf.help.DataBackup;
+import com.kunfei.bookshelf.help.FileHelp;
 import com.kunfei.bookshelf.help.LauncherIcon;
 import com.kunfei.bookshelf.help.ReadBookControl;
-import com.kunfei.bookshelf.help.RxBusTag;
 import com.kunfei.bookshelf.model.UpLastChapterModel;
 import com.kunfei.bookshelf.presenter.MainPresenter;
 import com.kunfei.bookshelf.presenter.contract.MainContract;
 import com.kunfei.bookshelf.utils.PermissionUtils;
-import com.kunfei.bookshelf.utils.Theme.ATH;
-import com.kunfei.bookshelf.utils.Theme.NavigationViewUtil;
-import com.kunfei.bookshelf.utils.Theme.ThemeStore;
+import com.kunfei.bookshelf.utils.StringUtils;
+import com.kunfei.bookshelf.utils.theme.ATH;
+import com.kunfei.bookshelf.utils.theme.NavigationViewUtil;
+import com.kunfei.bookshelf.utils.theme.ThemeStore;
 import com.kunfei.bookshelf.view.fragment.BookListFragment;
 import com.kunfei.bookshelf.view.fragment.FindBookFragment;
 import com.kunfei.bookshelf.widget.modialog.MoDialogHUD;
@@ -66,7 +68,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     private static final int BACKUP_RESULT = 11;
     private static final int RESTORE_RESULT = 12;
     private static final int FILE_SELECT_RESULT = 13;
-    private static String[] mTitles = new String[]{"书架", "发现"};
+    private String[] mTitles;
 
     @BindView(R.id.drawer)
     DrawerLayout drawer;
@@ -115,6 +117,28 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         ButterKnife.bind(this);
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        String shared_url = preferences.getString("shared_url", "");
+        assert shared_url != null;
+        if (shared_url.length() > 1) {
+            moDialogHUD.showInputBox(getString(R.string.add_book_url),
+                    shared_url,
+                    null,
+                    inputText -> {
+                        inputText = StringUtils.trim(inputText);
+                        mPresenter.addBookUrl(inputText);
+                    });
+
+            preferences.edit()
+                    .putString("shared_url", "")
+                    .apply();
+        }
+    }
+
+
     /**
      * 沉浸状态栏
      */
@@ -126,6 +150,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     @Override
     protected void initData() {
         viewIsList = preferences.getBoolean("bookshelfIsList", true);
+        mTitles = new String[]{getString(R.string.bookshelf), getString(R.string.find)};
     }
 
     @Override
@@ -165,7 +190,10 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         initTabLayout();
         upGroup(group);
         moDialogHUD = new MoDialogHUD(this);
-
+        if (!preferences.getBoolean("behaviorMain", true)) {
+            AppBarLayout.LayoutParams params = (AppBarLayout.LayoutParams) toolbar.getLayoutParams();
+            params.setScrollFlags(0);
+        }
         //点击跳转搜索页
         cardSearch.setOnClickListener(view -> startActivityByAnim(new Intent(this, SearchBookActivity.class),
                 toolbar, "sharedView", android.R.anim.fade_in, android.R.anim.fade_out));
@@ -173,8 +201,8 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
 
     //初始化TabLayout和ViewPager
     private void initTabLayout() {
-        mTlIndicator.setSelectedTabIndicatorColor(ThemeStore.accentColor(this));
         mTlIndicator.setBackgroundColor(ThemeStore.backgroundColor(this));
+        mTlIndicator.setSelectedTabIndicatorColor(ThemeStore.accentColor(this));
         //TabLayout使用自定义Item
         for (int i = 0; i < mTlIndicator.getTabCount(); i++) {
             TabLayout.Tab tab = mTlIndicator.getTabAt(i);
@@ -246,7 +274,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
      */
     private void showFindMenu(View view) {
         PopupMenu popupMenu = new PopupMenu(this, view);
-        popupMenu.getMenu().add(0, 0, 0, "切换显示样式");
+        popupMenu.getMenu().add(0, 0, 0, getString(R.string.switch_display_style));
         popupMenu.setOnMenuItemClickListener(menuItem -> {
             SharedPreferences.Editor editor = preferences.edit();
             editor.putBoolean("findTypeIsFlexBox", !preferences.getBoolean("findTypeIsFlexBox", true));
@@ -348,24 +376,27 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
 
                     @Override
                     public void onUserHasAlreadyTurnedDown(String... permission) {
-                        MainActivity.this.toast("导入本地书籍需存储权限");
+                        MainActivity.this.toast(R.string.import_per);
                     }
 
                     @Override
-                    public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+                    public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                         PermissionUtils.requestMorePermissions(MainActivity.this, permission, FILE_SELECT_RESULT);
                     }
                 });
                 break;
             case R.id.action_add_url:
-                moDialogHUD.showInputBox("添加书籍网址",
+                moDialogHUD.showInputBox(getString(R.string.add_book_url),
                         null,
                         null,
-                        inputText -> mPresenter.addBookUrl(inputText));
+                        inputText -> {
+                            inputText = StringUtils.trim(inputText);
+                            mPresenter.addBookUrl(inputText);
+                        });
                 break;
             case R.id.action_download_all:
                 if (!isNetWorkAvailable())
-                    toast("网络连接不可用，无法下载！");
+                    toast(R.string.network_connection_unavailable);
                 else
                     RxBus.get().post(RxBusTag.DOWNLOAD_ALL, 10000);
                 break;
@@ -377,9 +408,9 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
             case R.id.action_clear_cache:
                 new AlertDialog.Builder(this)
                         .setTitle(R.string.clear_content)
-                        .setMessage("是否同时删除已下载的书籍目录？")
-                        .setPositiveButton("是", (dialog, which) -> BookshelfHelp.clearCaches(true))
-                        .setNegativeButton("否", (dialogInterface, i) -> BookshelfHelp.clearCaches(false))
+                        .setMessage(getString(R.string.sure_del_download_book))
+                        .setPositiveButton(R.string.yes, (dialog, which) -> BookshelfHelp.clearCaches(true))
+                        .setNegativeButton(R.string.no, (dialogInterface, i) -> BookshelfHelp.clearCaches(false))
                         .show();
                 break;
             case R.id.action_clearBookshelf:
@@ -396,7 +427,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
                 break;
             case android.R.id.home:
                 if (drawer.isDrawerOpen(GravityCompat.START)
-                        ) {
+                ) {
                     drawer.closeDrawers();
                 } else {
                     drawer.openDrawer(GravityCompat.START);
@@ -498,10 +529,10 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     private void upThemeVw() {
         if (isNightTheme()) {
             vwNightTheme.setImageResource(R.drawable.ic_daytime_24dp);
-            vwNightTheme.setContentDescription("点击可切换到白天模式");
+            vwNightTheme.setContentDescription(getString(R.string.click_to_day));
         } else {
             vwNightTheme.setImageResource(R.drawable.ic_brightness);
-            vwNightTheme.setContentDescription("点击可切换到夜间模式");
+            vwNightTheme.setContentDescription(getString(R.string.click_to_night));
         }
         vwNightTheme.getDrawable().mutate().setColorFilter(ThemeStore.accentColor(this), PorterDuff.Mode.SRC_ATOP);
     }
@@ -529,7 +560,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 PermissionUtils.requestMorePermissions(MainActivity.this, permission, BACKUP_RESULT);
             }
         });
@@ -558,7 +589,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 PermissionUtils.requestMorePermissions(MainActivity.this, permission, RESTORE_RESULT);
             }
         });
@@ -570,9 +601,9 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     private void versionUpRun() {
         if (preferences.getInt("versionCode", 0) != MApplication.getVersionCode()) {
             //保存版本号
-            SharedPreferences.Editor editor = preferences.edit();
-            editor.putInt("versionCode", MApplication.getVersionCode());
-            editor.apply();
+            preferences.edit()
+                    .putInt("versionCode", MApplication.getVersionCode())
+                    .apply();
             //更新日志
             moDialogHUD.showAssetMarkdown("updateLog.md");
         }
@@ -584,7 +615,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     private void requestPermission() {
         List<String> per = PermissionUtils.checkMorePermissions(this, MApplication.PerList);
         if (per.size() > 0) {
-            toast("本软件需要存储权限来存储备份书籍信息");
+            toast(R.string.get_storage_per);
             PermissionUtils.requestMorePermissions(this, per, MApplication.RESULT__PERMS);
         }
     }
@@ -593,8 +624,10 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     protected void firstRequest() {
         if (!isRecreate) {
             versionUpRun();
-            requestPermission();
             handler.postDelayed(this::preloadReader, 200);
+        }
+        if (!Objects.equals(MApplication.downloadPath, FileHelp.getFilesPath())) {
+            requestPermission();
         }
         handler.postDelayed(() -> UpLastChapterModel.getInstance().startUpdate(), 60 * 1000);
     }
@@ -631,7 +664,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
             public void onUserHasAlreadyTurnedDown(String... permission) {
                 switch (requestCode) {
                     case FILE_SELECT_RESULT:
-                        MainActivity.this.toast("导入本地书籍需存储权限");
+                        MainActivity.this.toast(R.string.import_book_per);
                         break;
                     case BACKUP_RESULT:
                         MainActivity.this.toast(R.string.backup_permission);
@@ -643,10 +676,10 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 switch (requestCode) {
                     case FILE_SELECT_RESULT:
-                        MainActivity.this.toast("导入本地书籍需存储权限");
+                        MainActivity.this.toast(R.string.import_book_per);
                         break;
                     case BACKUP_RESULT:
                         MainActivity.this.toast(R.string.backup_permission);
@@ -686,10 +719,9 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
      */
     public void exit() {
         if ((System.currentTimeMillis() - exitTime) > 2000) {
-            showSnackBar(toolbar, "再按一次退出程序");
+            showSnackBar(toolbar, getString(R.string.double_click_exit));
             exitTime = System.currentTimeMillis();
         } else {
-            DataBackup.getInstance().autoSave();
             finish();
         }
     }

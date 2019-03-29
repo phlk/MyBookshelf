@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,10 +30,7 @@ public class PermissionUtils {
      * @return true：已授权； false：未授权；
      */
     public static boolean checkPermission(Context context, String permission) {
-        if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED)
-            return true;
-        else
-            return false;
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED;
     }
 
     /**
@@ -44,9 +40,9 @@ public class PermissionUtils {
      */
     public static List<String> checkMorePermissions(Context context, String[] permissions) {
         List<String> permissionList = new ArrayList<>();
-        for (int i = 0; i < permissions.length; i++) {
-            if (!checkPermission(context, permissions[i]))
-                permissionList.add(permissions[i]);
+        for (String permission : permissions) {
+            if (!checkPermission(context, permission))
+                permissionList.add(permission);
         }
         return permissionList;
     }
@@ -62,7 +58,7 @@ public class PermissionUtils {
      * 请求多个权限
      */
     public static void requestMorePermissions(Context context, List permissionList, int requestCode) {
-        String[] permissions = (String[]) permissionList.toArray(new String[permissionList.size()]);
+        String[] permissions = (String[]) permissionList.toArray(new String[0]);
         requestMorePermissions(context, permissions, requestCode);
     }
 
@@ -76,16 +72,12 @@ public class PermissionUtils {
     /**
      * 判断是否已拒绝过权限
      *
-     * @return
-     * @describe :如果应用之前请求过此权限但用户拒绝，此方法将返回 true;
+     * @return :如果应用之前请求过此权限但用户拒绝，此方法将返回 true;
      * -----------如果应用第一次请求权限或 用户在过去拒绝了权限请求，
      * -----------并在权限请求系统对话框中选择了 Don't ask again 选项，此方法将返回 false。
      */
     public static boolean judgePermission(Context context, String permission) {
-        if (ActivityCompat.shouldShowRequestPermissionRationale((Activity) context, permission))
-            return true;
-        else
-            return false;
+        return ActivityCompat.shouldShowRequestPermissionRationale((Activity) context, permission);
     }
 
     /**
@@ -108,8 +100,7 @@ public class PermissionUtils {
 
     /**
      * 检测权限
-     *
-     * @describe：具体实现由回调接口决定
+     * 具体实现由回调接口决定
      */
     public static void checkPermission(Context context, String permission, PermissionCheckCallBack callBack) {
         if (checkPermission(context, permission)) { // 用户已授予权限
@@ -118,14 +109,13 @@ public class PermissionUtils {
             if (judgePermission(context, permission))  // 用户之前已拒绝过权限申请
                 callBack.onUserHasAlreadyTurnedDown(permission);
             else                                       // 用户之前已拒绝并勾选了不在询问、用户第一次申请权限。
-                callBack.onUserHasAlreadyTurnedDownAndDontAsk(permission);
+                callBack.onAlreadyTurnedDownAndNoAsk(permission);
         }
     }
 
     /**
      * 检测多个权限
-     *
-     * @describe：具体实现由回调接口决定
+     * 具体实现由回调接口决定
      */
     public static void checkMorePermissions(Context context, String[] permissions, PermissionCheckCallBack callBack) {
         List<String> permissionList = checkMorePermissions(context, permissions);
@@ -142,7 +132,7 @@ public class PermissionUtils {
             }
             String[] unauthorizedMorePermissions = (String[]) permissionList.toArray(new String[permissionList.size()]);
             if (isFirst)// 用户之前已拒绝过权限申请
-                callBack.onUserHasAlreadyTurnedDownAndDontAsk(unauthorizedMorePermissions);
+                callBack.onAlreadyTurnedDownAndNoAsk(unauthorizedMorePermissions);
             else       // 用户之前已拒绝并勾选了不在询问、用户第一次申请权限。
                 callBack.onUserHasAlreadyTurnedDown(unauthorizedMorePermissions);
 
@@ -177,11 +167,7 @@ public class PermissionUtils {
      * 判断权限是否申请成功
      */
     public static boolean isPermissionRequestSuccess(int[] grantResults) {
-        if (grantResults.length > 0
-                && grantResults[0] == PackageManager.PERMISSION_GRANTED)
-            return true;
-        else
-            return false;
+        return grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
     }
 
     /**
@@ -194,7 +180,7 @@ public class PermissionUtils {
             if (PermissionUtils.judgePermission(context, permission)) {
                 callback.onUserHasAlreadyTurnedDown(permission);
             } else {
-                callback.onUserHasAlreadyTurnedDownAndDontAsk(permission);
+                callback.onAlreadyTurnedDownAndNoAsk(permission);
             }
         }
     }
@@ -216,7 +202,7 @@ public class PermissionUtils {
             }
             //　已禁止再次询问权限
             if (isBannedPermission)
-                callback.onUserHasAlreadyTurnedDownAndDontAsk(permissions);
+                callback.onAlreadyTurnedDownAndNoAsk(permissions);
             else // 拒绝权限
                 callback.onUserHasAlreadyTurnedDown(permissions);
         }
@@ -230,14 +216,8 @@ public class PermissionUtils {
     public static void toAppSetting(Context context) {
         Intent intent = new Intent();
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        if (Build.VERSION.SDK_INT >= 9) {
-            intent.setAction("android.settings.APPLICATION_DETAILS_SETTINGS");
-            intent.setData(Uri.fromParts("package", context.getPackageName(), null));
-        } else if (Build.VERSION.SDK_INT <= 8) {
-            intent.setAction(Intent.ACTION_VIEW);
-            intent.setClassName("com.android.settings", "com.android.settings.InstalledAppDetails");
-            intent.putExtra("com.android.settings.ApplicationPkgName", context.getPackageName());
-        }
+        intent.setAction("android.settings.APPLICATION_DETAILS_SETTINGS");
+        intent.setData(Uri.fromParts("package", context.getPackageName(), null));
         context.startActivity(intent);
     }
 
@@ -268,7 +248,7 @@ public class PermissionUtils {
          *
          * @param permission:被拒绝的权限
          */
-        void onUserHasAlreadyTurnedDownAndDontAsk(String... permission);
+        void onAlreadyTurnedDownAndNoAsk(String... permission);
     }
 
 

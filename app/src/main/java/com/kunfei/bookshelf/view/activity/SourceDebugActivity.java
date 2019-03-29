@@ -20,7 +20,7 @@ import com.kunfei.bookshelf.help.BookshelfHelp;
 import com.kunfei.bookshelf.model.WebBookModel;
 import com.kunfei.bookshelf.utils.RxUtils;
 import com.kunfei.bookshelf.utils.SoftInputUtil;
-import com.kunfei.bookshelf.utils.Theme.ThemeStore;
+import com.kunfei.bookshelf.utils.theme.ThemeStore;
 import com.victor.loading.rotate.RotateLoading;
 
 import java.util.List;
@@ -129,7 +129,7 @@ public class SourceDebugActivity extends MBaseActivity {
                 if (TextUtils.isEmpty(query))
                     return false;
                 startDebug(query);
-                SoftInputUtil.hideIMM(SourceDebugActivity.this, searchView);
+                SoftInputUtil.hideIMM(searchView);
                 return true;
             }
 
@@ -158,7 +158,7 @@ public class SourceDebugActivity extends MBaseActivity {
                     @SuppressLint("DefaultLocale")
                     @Override
                     public void onNext(List<SearchBookBean> searchBookBeans) {
-                        tvContent.setText(String.format("搜索列表获取成功%d", searchBookBeans.size()));
+                        tvContent.setText(getString(R.string.get_book_list_success, searchBookBeans.size()));
                         SearchBookBean searchBookBean = searchBookBeans.get(0);
                         tvContent.setText(String.format("%s\n书名:%s", tvContent.getText(), searchBookBean.getName()));
                         tvContent.setText(String.format("%s\n作者:%s", tvContent.getText(), searchBookBean.getAuthor()));

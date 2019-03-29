@@ -31,7 +31,7 @@ class BookContent {
         this.tag = tag;
         this.bookSourceBean = bookSourceBean;
         ruleBookContent = bookSourceBean.getRuleBookContent();
-        if (ruleBookContent.startsWith("$")) {
+        if (ruleBookContent.startsWith("$") && !ruleBookContent.startsWith("$.")) {
             ruleBookContent = ruleBookContent.substring(1);
         }
     }
@@ -43,7 +43,7 @@ class BookContent {
     Observable<BookContentBean> analyzeBookContent(final String s, final BaseChapterBean chapterBean, Map<String, String> headerMap) {
         return Observable.create(e -> {
             if (TextUtils.isEmpty(s)) {
-                e.onError(new Throwable("内容获取失败"));
+                e.onError(new Throwable(MApplication.getInstance().getString(R.string.get_content_error)));
                 return;
             }
 
@@ -96,7 +96,7 @@ class BookContent {
         });
     }
 
-    private WebContentBean analyzeBookContent(final String s, final String chapterUrl) {
+    private WebContentBean analyzeBookContent(final String s, final String chapterUrl) throws Exception {
         WebContentBean webContentBean = new WebContentBean();
 
         AnalyzeRule analyzer = new AnalyzeRule(null);

@@ -2,6 +2,7 @@ package com.kunfei.bookshelf.presenter;
 
 import android.annotation.SuppressLint;
 import android.os.AsyncTask;
+import android.text.TextUtils;
 
 import com.google.android.material.snackbar.Snackbar;
 import com.hwangjr.rxbus.RxBus;
@@ -14,9 +15,9 @@ import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.observer.SimpleObserver;
 import com.kunfei.bookshelf.bean.BookSourceBean;
+import com.kunfei.bookshelf.constant.RxBusTag;
 import com.kunfei.bookshelf.dao.DbHelper;
 import com.kunfei.bookshelf.help.DocumentHelper;
-import com.kunfei.bookshelf.help.RxBusTag;
 import com.kunfei.bookshelf.model.BookSourceManager;
 import com.kunfei.bookshelf.presenter.contract.BookSourceContract;
 import com.kunfei.bookshelf.service.CheckSourceService;
@@ -53,7 +54,7 @@ public class BookSourcePresenter extends BasePresenterImpl<BookSourceContract.Vi
     @Override
     public void saveData(List<BookSourceBean> bookSourceBeans) {
         AsyncTask.execute(() -> {
-            if (MApplication.getInstance().getConfigPreferences().getInt("SourceSort", 0) == 0) {
+            if (MApplication.getConfigPreferences().getInt("SourceSort", 0) == 0) {
                 for (int i = 1; i <= bookSourceBeans.size(); i++) {
                     bookSourceBeans.get(i - 1).setSerialNumber(i);
                 }
@@ -145,6 +146,10 @@ public class BookSourcePresenter extends BasePresenterImpl<BookSourceContract.Vi
 
     @Override
     public void importBookSourceLocal(String path) {
+        if (TextUtils.isEmpty(path)) {
+            mView.toast(R.string.read_file_error);
+            return;
+        }
         String json;
         DocumentFile file;
         try {
@@ -158,7 +163,7 @@ public class BookSourcePresenter extends BasePresenterImpl<BookSourceContract.Vi
             mView.showSnackBar("正在导入书源", Snackbar.LENGTH_INDEFINITE);
             importBookSource(json);
         } else {
-            mView.toast("文件读取失败");
+            mView.toast(R.string.read_file_error);
         }
     }
 

@@ -14,7 +14,7 @@ import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.BaseModelImpl;
 import com.kunfei.bookshelf.bean.BookSourceBean;
-import com.kunfei.bookshelf.help.RxBusTag;
+import com.kunfei.bookshelf.constant.RxBusTag;
 import com.kunfei.bookshelf.model.BookSourceManager;
 import com.kunfei.bookshelf.model.analyzeRule.AnalyzeHeaders;
 import com.kunfei.bookshelf.model.impl.IHttpGetApi;
@@ -24,6 +24,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -69,7 +70,7 @@ public class CheckSourceService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        SharedPreferences preference = MApplication.getInstance().getConfigPreferences();
+        SharedPreferences preference = MApplication.getConfigPreferences();
         threadsNum = preference.getInt(this.getString(R.string.pk_threads_num), 6);
         executorService = Executors.newFixedThreadPool(threadsNum);
         scheduler = Schedulers.from(executorService);
@@ -183,6 +184,7 @@ public class CheckSourceService extends Service {
                     BaseModelImpl.getInstance().getRetrofitString(sourceBean.getBookSourceUrl())
                             .create(IHttpGetApi.class)
                             .getWebContent(sourceBean.getBookSourceUrl(), AnalyzeHeaders.getMap(sourceBean))
+                            .timeout(20, TimeUnit.SECONDS)
                             .subscribeOn(scheduler)
                             .observeOn(AndroidSchedulers.mainThread())
                             .subscribe(getObserver());
@@ -199,13 +201,6 @@ public class CheckSourceService extends Service {
                 @Override
                 public void onSubscribe(Disposable d) {
                     compositeDisposable.add(d);
-                    handler.postDelayed(() -> {
-                        if (!d.isDisposed()) {
-                            d.dispose();
-                            nextCheck();
-                            checkSource = null;
-                        }
-                    }, 60 * 1000);
                 }
 
                 @Override

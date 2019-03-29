@@ -13,10 +13,10 @@ import android.widget.Toast;
 import com.hwangjr.rxbus.RxBus;
 import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
+import com.kunfei.bookshelf.constant.RxBusTag;
 import com.kunfei.bookshelf.help.FileHelp;
 import com.kunfei.bookshelf.help.ProcessTextHelp;
-import com.kunfei.bookshelf.help.RxBusTag;
-import com.kunfei.bookshelf.utils.FileUtil;
+import com.kunfei.bookshelf.utils.FileUtils;
 import com.kunfei.bookshelf.utils.PermissionUtils;
 import com.kunfei.bookshelf.view.activity.SettingActivity;
 
@@ -36,6 +36,7 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
         super.onCreate(savedInstanceState);
         getPreferenceManager().setSharedPreferencesName("CONFIG");
         settingActivity = (SettingActivity) this.getActivity();
+        settingActivity.setupActionBar(getString(R.string.setting));
         SharedPreferences sharedPreferences = getPreferenceManager().getSharedPreferences();
         SharedPreferences.Editor editor = sharedPreferences.edit();
         boolean processTextEnabled = ProcessTextHelp.isProcessTextEnabled();
@@ -85,7 +86,7 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if (key.equals(getString(R.string.pk_bookshelf_px))) {
+        if (key.equals(getString(R.string.pk_bookshelf_px)) || key.equals("behaviorMain")) {
             RxBus.get().post(RxBusTag.RECREATE, true);
         } else if (key.equals("process_text")) {
             ProcessTextHelp.setProcessTextEnable(sharedPreferences.getBoolean("process_text", true));
@@ -96,6 +97,9 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
     public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
         if (preference.getKey().equals(getString(R.string.pk_download_path))) {
             selectDownloadPath(preference);
+        } else if (preference.getKey().equals("webDavSetting")) {
+            WebDavSettingsFragment webDavSettingsFragment = new WebDavSettingsFragment();
+            getFragmentManager().beginTransaction().replace(R.id.settingsFrameLayout, webDavSettingsFragment, "webDavSettings").commit();
         }
         return super.onPreferenceTreeClick(preferenceScreen, preference);
     }
@@ -110,29 +114,29 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
                 picker.setRootPath(preference.getSummary().toString());
                 picker.setItemHeight(30);
                 picker.setOnFilePickListener(currentPath -> {
-                    if (!currentPath.contains(FileUtil.getSdCardPath())) {
-                        MApplication.getInstance().setDownloadPath(FileHelp.getCachePath());
+                    if (!currentPath.contains(FileUtils.getSdCardPath())) {
+                        MApplication.getInstance().setDownloadPath(null);
                     } else {
                         MApplication.getInstance().setDownloadPath(currentPath);
                     }
                     preference.setSummary(MApplication.downloadPath);
                 });
                 picker.show();
-                picker.getCancelButton().setText("恢复默认");
+                picker.getCancelButton().setText(R.string.restore_default);
                 picker.getCancelButton().setOnClickListener(view -> {
                     picker.dismiss();
-                    MApplication.getInstance().setDownloadPath(FileHelp.getCachePath());
+                    MApplication.getInstance().setDownloadPath(null);
                     preference.setSummary(MApplication.downloadPath);
                 });
             }
 
             @Override
             public void onUserHasAlreadyTurnedDown(String... permission) {
-                Toast.makeText(getActivity(), "自定义缓存路径需要存储权限", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(), R.string.set_download_per, Toast.LENGTH_SHORT).show();
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 PermissionUtils.requestMorePermissions(getActivity(), MApplication.PerList, MApplication.RESULT__PERMS);
             }
         });

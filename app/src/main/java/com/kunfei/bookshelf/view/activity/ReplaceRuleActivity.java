@@ -15,15 +15,16 @@ import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.MBaseActivity;
 import com.kunfei.bookshelf.base.observer.SimpleObserver;
 import com.kunfei.bookshelf.bean.ReplaceRuleBean;
-import com.kunfei.bookshelf.help.ACache;
-import com.kunfei.bookshelf.help.MyItemTouchHelpCallback;
-import com.kunfei.bookshelf.help.RxBusTag;
+import com.kunfei.bookshelf.constant.RxBusTag;
+import com.kunfei.bookshelf.help.ItemTouchCallback;
 import com.kunfei.bookshelf.model.ReplaceRuleManager;
 import com.kunfei.bookshelf.presenter.ReplaceRulePresenter;
 import com.kunfei.bookshelf.presenter.contract.ReplaceRuleContract;
-import com.kunfei.bookshelf.utils.FileUtil;
+import com.kunfei.bookshelf.utils.ACache;
+import com.kunfei.bookshelf.utils.FileUtils;
 import com.kunfei.bookshelf.utils.PermissionUtils;
-import com.kunfei.bookshelf.utils.Theme.ThemeStore;
+import com.kunfei.bookshelf.utils.StringUtils;
+import com.kunfei.bookshelf.utils.theme.ThemeStore;
 import com.kunfei.bookshelf.view.adapter.ReplaceRuleAdapter;
 import com.kunfei.bookshelf.widget.modialog.MoDialogHUD;
 
@@ -101,10 +102,10 @@ public class ReplaceRuleActivity extends MBaseActivity<ReplaceRuleContract.Prese
         adapter = new ReplaceRuleAdapter(this);
         recyclerViewBookSource.setAdapter(adapter);
         adapter.resetDataS(ReplaceRuleManager.getAll());
-        MyItemTouchHelpCallback itemTouchHelpCallback = new MyItemTouchHelpCallback();
-        itemTouchHelpCallback.setOnItemTouchCallbackListener(adapter.getItemTouchCallbackListener());
-        itemTouchHelpCallback.setDragEnable(true);
-        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchHelpCallback);
+        ItemTouchCallback itemTouchCallback = new ItemTouchCallback();
+        itemTouchCallback.setOnItemTouchCallbackListener(adapter.getItemTouchCallbackListener());
+        itemTouchCallback.setDragEnable(true);
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchCallback);
         itemTouchHelper.attachToRecyclerView(recyclerViewBookSource);
 
     }
@@ -133,7 +134,7 @@ public class ReplaceRuleActivity extends MBaseActivity<ReplaceRuleContract.Prese
 
     public void upDateSelectAll() {
         selectAll = true;
-        for (ReplaceRuleBean replaceRuleBean : adapter.getDataList()) {
+        for (ReplaceRuleBean replaceRuleBean : adapter.getData()) {
             if (replaceRuleBean.getEnable() == null || !replaceRuleBean.getEnable()) {
                 selectAll = false;
                 break;
@@ -142,12 +143,12 @@ public class ReplaceRuleActivity extends MBaseActivity<ReplaceRuleContract.Prese
     }
 
     private void selectAllDataS() {
-        for (ReplaceRuleBean replaceRuleBean : adapter.getDataList()) {
+        for (ReplaceRuleBean replaceRuleBean : adapter.getData()) {
             replaceRuleBean.setEnable(!selectAll);
         }
         adapter.notifyDataSetChanged();
         selectAll = !selectAll;
-        ReplaceRuleManager.addDataS(adapter.getDataList());
+        ReplaceRuleManager.addDataS(adapter.getData());
     }
 
     public void delData(ReplaceRuleBean replaceRuleBean) {
@@ -155,7 +156,7 @@ public class ReplaceRuleActivity extends MBaseActivity<ReplaceRuleContract.Prese
     }
 
     public void saveDataS() {
-        mPresenter.saveData(adapter.getDataList());
+        mPresenter.saveData(adapter.getData());
     }
 
     //设置ToolBar
@@ -190,16 +191,17 @@ public class ReplaceRuleActivity extends MBaseActivity<ReplaceRuleContract.Prese
                 break;
             case R.id.action_import_onLine:
                 String cacheUrl = ACache.get(this).getAsString("replaceUrl");
-                moDialogHUD.showInputBox("输入替换规则网址",
+                moDialogHUD.showInputBox(getString(R.string.input_replace_url),
                         cacheUrl,
                         new String[]{cacheUrl},
                         inputText -> {
+                            inputText = StringUtils.trim(inputText);
                             ACache.get(this).put("replaceUrl", inputText);
                             mPresenter.importDataS(inputText);
                         });
                 break;
             case R.id.action_del_all:
-                mPresenter.delData(adapter.getDataList());
+                mPresenter.delData(adapter.getData());
                 break;
             case android.R.id.home:
                 finish();
@@ -234,7 +236,7 @@ public class ReplaceRuleActivity extends MBaseActivity<ReplaceRuleContract.Prese
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 PermissionUtils.requestMorePermissions(ReplaceRuleActivity.this, MApplication.PerList, MApplication.RESULT__PERMS);
             }
         });
@@ -276,7 +278,7 @@ public class ReplaceRuleActivity extends MBaseActivity<ReplaceRuleContract.Prese
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 ReplaceRuleActivity.this.toast(R.string.import_book_source);
                 PermissionUtils.toAppSetting(ReplaceRuleActivity.this);
             }
@@ -289,7 +291,7 @@ public class ReplaceRuleActivity extends MBaseActivity<ReplaceRuleContract.Prese
         switch (requestCode) {
             case IMPORT_SOURCE:
                 if (data != null) {
-                    mPresenter.importDataSLocal(FileUtil.getPath(this, data.getData()));
+                    mPresenter.importDataSLocal(FileUtils.getPath(this, data.getData()));
                 }
                 break;
         }

@@ -22,7 +22,7 @@ import androidx.annotation.Nullable;
 
 public abstract class MBaseFragment<T extends IPresenter> extends BaseFragment<T> implements IView {
     public final static String start_share_ele = "start_with_share_ele";
-    public final SharedPreferences preferences = MApplication.getInstance().getConfigPreferences();
+    public final SharedPreferences preferences = MApplication.getConfigPreferences();
     protected T mPresenter;
 
     @Override
@@ -86,5 +86,9 @@ public abstract class MBaseFragment<T extends IPresenter> extends BaseFragment<T
 
     public void toast(String msg) {
         Toast.makeText(this.getActivity(), msg, Toast.LENGTH_SHORT).show();
+    }
+
+    public void toast(int id) {
+        Toast.makeText(this.getActivity(), getString(id), Toast.LENGTH_SHORT).show();
     }
 }

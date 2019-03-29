@@ -37,7 +37,6 @@ public class DefaultModel extends BaseModelImpl implements IStationBookModel {
             URL url = new URL(tag);
             name = url.getHost();
         } catch (MalformedURLException e) {
-            e.printStackTrace();
             name = tag;
         }
     }
@@ -132,6 +131,7 @@ public class DefaultModel extends BaseModelImpl implements IStationBookModel {
         try {
             AnalyzeUrl analyzeUrl = new AnalyzeUrl(bookShelfBean.getNoteUrl(), null, null, headerMap);
             return getResponseO(analyzeUrl)
+                    .flatMap(response -> setCookie(response, tag))
                     .flatMap(response -> bookInfo.analyzeBookInfo(response.body(), bookShelfBean));
         } catch (Exception e) {
             return Observable.error(new Throwable(String.format("url错误:%s", bookShelfBean.getNoteUrl())));
@@ -153,6 +153,7 @@ public class DefaultModel extends BaseModelImpl implements IStationBookModel {
         try {
             AnalyzeUrl analyzeUrl = new AnalyzeUrl(bookShelfBean.getBookInfoBean().getChapterUrl(), null, null, headerMap);
             return getResponseO(analyzeUrl)
+                    .flatMap(response -> setCookie(response, tag))
                     .flatMap(response -> bookChapter.analyzeChapterList(response.body(), bookShelfBean, headerMap));
         } catch (Exception e) {
             return Observable.error(new Throwable(String.format("url错误:%s", bookShelfBean.getBookInfoBean().getChapterUrl())));
@@ -173,7 +174,7 @@ public class DefaultModel extends BaseModelImpl implements IStationBookModel {
         BookContent bookContent = new BookContent(tag, bookSourceBean);
         try {
             AnalyzeUrl analyzeUrl = new AnalyzeUrl(chapterBean.getDurChapterUrl(), null, null, headerMap);
-            if (bookSourceBean.getRuleBookContent().startsWith("$")) {
+            if (bookSourceBean.getRuleBookContent().startsWith("$") && !bookSourceBean.getRuleBookContent().startsWith("$.")) {
                 return getAjaxHtml(analyzeUrl, tag)
                         .flatMap(response -> bookContent.analyzeBookContent(response, chapterBean, headerMap));
             } else {

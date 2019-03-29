@@ -13,13 +13,13 @@ import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.MBaseFragment;
 import com.kunfei.bookshelf.bean.BookShelfBean;
-import com.kunfei.bookshelf.help.MyItemTouchHelpCallback;
+import com.kunfei.bookshelf.help.ItemTouchCallback;
 import com.kunfei.bookshelf.presenter.BookDetailPresenter;
 import com.kunfei.bookshelf.presenter.BookListPresenter;
 import com.kunfei.bookshelf.presenter.ReadBookPresenter;
 import com.kunfei.bookshelf.presenter.contract.BookListContract;
 import com.kunfei.bookshelf.utils.NetworkUtil;
-import com.kunfei.bookshelf.utils.Theme.ThemeStore;
+import com.kunfei.bookshelf.utils.theme.ThemeStore;
 import com.kunfei.bookshelf.view.activity.BookDetailActivity;
 import com.kunfei.bookshelf.view.activity.ReadBookActivity;
 import com.kunfei.bookshelf.view.adapter.BookShelfAdapter;
@@ -114,23 +114,23 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
         refreshLayout.setOnRefreshListener(() -> {
             mPresenter.queryBookShelf(NetworkUtil.isNetWorkAvailable(), group);
             if (!NetworkUtil.isNetWorkAvailable()) {
-                Toast.makeText(getContext(), "无网络，请打开网络后再试。", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.network_connection_unavailable, Toast.LENGTH_SHORT).show();
             }
             refreshLayout.setRefreshing(false);
         });
-        MyItemTouchHelpCallback itemTouchHelpCallback = new MyItemTouchHelpCallback();
-        itemTouchHelpCallback.setSwipeRefreshLayout(refreshLayout);
+        ItemTouchCallback itemTouchCallback = new ItemTouchCallback();
+        itemTouchCallback.setSwipeRefreshLayout(refreshLayout);
         if (bookPx.equals("2")) {
-            itemTouchHelpCallback.setDragEnable(true);
-            ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchHelpCallback);
+            itemTouchCallback.setDragEnable(true);
+            ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchCallback);
             itemTouchHelper.attachToRecyclerView(rvBookshelf);
         } else {
-            itemTouchHelpCallback.setDragEnable(false);
-            ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchHelpCallback);
+            itemTouchCallback.setDragEnable(false);
+            ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchCallback);
             itemTouchHelper.attachToRecyclerView(rvBookshelf);
         }
         bookShelfAdapter.setItemClickListener(getAdapterListener());
-        itemTouchHelpCallback.setOnItemTouchCallbackListener(bookShelfAdapter.getItemTouchCallbackListener());
+        itemTouchCallback.setOnItemTouchCallbackListener(bookShelfAdapter.getItemTouchCallbackListener());
     }
 
     private OnItemClickListenerTwo getAdapterListener() {
@@ -146,7 +146,6 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
                     BitIntentDataManager.getInstance().putData(key, bookShelfBean.clone());
                 } catch (CloneNotSupportedException e) {
                     BitIntentDataManager.getInstance().putData(key, bookShelfBean);
-                    e.printStackTrace();
                 }
                 startActivityByAnim(intent, android.R.anim.fade_in, android.R.anim.fade_out);
             }

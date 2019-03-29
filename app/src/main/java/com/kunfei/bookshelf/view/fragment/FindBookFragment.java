@@ -19,7 +19,7 @@ import com.kunfei.bookshelf.bean.FindKindGroupBean;
 import com.kunfei.bookshelf.model.BookSourceManager;
 import com.kunfei.bookshelf.presenter.FindBookPresenter;
 import com.kunfei.bookshelf.presenter.contract.FindBookContract;
-import com.kunfei.bookshelf.utils.Theme.ThemeStore;
+import com.kunfei.bookshelf.utils.theme.ThemeStore;
 import com.kunfei.bookshelf.view.activity.ChoiceBookActivity;
 import com.kunfei.bookshelf.view.activity.SourceEditActivity;
 import com.kunfei.bookshelf.view.adapter.FindKindAdapter;
@@ -109,14 +109,14 @@ public class FindBookFragment extends MBaseFragment<FindBookContract.Presenter> 
     public synchronized void updateUI(List<RecyclerViewData> group) {
         if (rlEmptyView == null) return;
         if (group.size() == 0) {
-            tvEmpty.setText("没有发现，可以在书源里添加。");
+            tvEmpty.setText(R.string.no_find);
             rlEmptyView.setVisibility(View.VISIBLE);
         } else {
             rlEmptyView.setVisibility(View.GONE);
         }
         if (isFlexBox()) {
-            findLeftAdapter.setDatas(group);
-            findRightAdapter.setDatas(group);
+            findLeftAdapter.setData(group);
+            findRightAdapter.setData(group);
             rlEmptyView.setVisibility(View.GONE);
             rvFindLeft.setVisibility(View.VISIBLE);
             vwDivider.setVisibility(View.VISIBLE);
@@ -189,7 +189,7 @@ public class FindBookFragment extends MBaseFragment<FindBookContract.Presenter> 
         if (getActivity() == null) return;
         FindKindGroupBean groupBean;
         if (isFlexBox()) {
-            groupBean = (FindKindGroupBean) findRightAdapter.getDatas().get(groupPosition).getGroupData();
+            groupBean = (FindKindGroupBean) findRightAdapter.getData().get(groupPosition).getGroupData();
         } else {
             groupBean = (FindKindGroupBean) findKindAdapter.getAllDatas().get(groupPosition).getGroupData();
         }

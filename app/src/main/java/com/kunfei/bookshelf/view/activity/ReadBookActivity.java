@@ -25,6 +25,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.google.android.material.appbar.AppBarLayout;
+import com.hwangjr.rxbus.RxBus;
 import com.kunfei.basemvplib.AppActivityManager;
 import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
@@ -32,6 +33,7 @@ import com.kunfei.bookshelf.base.MBaseActivity;
 import com.kunfei.bookshelf.bean.BookShelfBean;
 import com.kunfei.bookshelf.bean.BookmarkBean;
 import com.kunfei.bookshelf.bean.ChapterListBean;
+import com.kunfei.bookshelf.constant.RxBusTag;
 import com.kunfei.bookshelf.help.ChapterContentHelp;
 import com.kunfei.bookshelf.help.ReadBookControl;
 import com.kunfei.bookshelf.presenter.ReadBookPresenter;
@@ -43,9 +45,9 @@ import com.kunfei.bookshelf.utils.PermissionUtils;
 import com.kunfei.bookshelf.utils.ScreenUtils;
 import com.kunfei.bookshelf.utils.StringUtils;
 import com.kunfei.bookshelf.utils.SystemUtil;
-import com.kunfei.bookshelf.utils.Theme.ThemeStore;
-import com.kunfei.bookshelf.utils.barUtil.BarHide;
-import com.kunfei.bookshelf.utils.barUtil.ImmersionBar;
+import com.kunfei.bookshelf.utils.bar.BarHide;
+import com.kunfei.bookshelf.utils.bar.ImmersionBar;
+import com.kunfei.bookshelf.utils.theme.ThemeStore;
 import com.kunfei.bookshelf.view.popupwindow.CheckAddShelfPop;
 import com.kunfei.bookshelf.view.popupwindow.MoreSettingPop;
 import com.kunfei.bookshelf.view.popupwindow.ReadAdjustPop;
@@ -103,8 +105,8 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
     ReadInterfacePop readInterfacePop;
     @BindView(R.id.moreSettingPop)
     MoreSettingPop moreSettingPop;
-    @BindView(R.id.hpb_next_page_progress)
-    ProgressBar hpbNextPageProgress;
+    @BindView(R.id.pb_nextPage)
+    ProgressBar progressBarNextPage;
 
     private Animation menuTopIn;
     private Animation menuTopOut;
@@ -142,7 +144,6 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
         if (savedInstanceState != null) {
             noteUrl = savedInstanceState.getString("noteUrl");
             isAdd = savedInstanceState.getBoolean("isAdd");
-            aloudStatus = ReadAloudService.Status.valueOf(savedInstanceState.getString("aloudStatus"));
         }
         readBookControl.initTextDrawableIndex();
         super.onCreate(savedInstanceState);
@@ -163,7 +164,6 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
         super.onSaveInstanceState(outState);
         if (mPresenter.getBookShelf() != null) {
             outState.putString("noteUrl", mPresenter.getBookShelf().getNoteUrl());
-            outState.putString("aloudStatus", aloudStatus.name());
             outState.putBoolean("isAdd", isAdd);
         }
     }
@@ -190,9 +190,9 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
         }
 
         if (readBookControl.getHideStatusBar()) {
-            hpbNextPageProgress.setY(0);
+            progressBarNextPage.setY(0);
         } else {
-            hpbNextPageProgress.setY(ImmersionBar.getStatusBarHeight(this));
+            progressBarNextPage.setY(ImmersionBar.getStatusBarHeight(this));
         }
 
         if (llMenuBottom.getVisibility() == View.VISIBLE) {
@@ -239,7 +239,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
         } else {
             mImmersionBar.showBarDivider();
         }
-        int barColorType = readBookControl.getNavbarColor();
+        int barColorType = readBookControl.getNavBarColor();
         if (llMenuBottom.getVisibility() == View.VISIBLE
                 || readAdjustPop.getVisibility() == View.VISIBLE
                 || readInterfacePop.getVisibility() == View.VISIBLE
@@ -302,20 +302,20 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
         mHandler.removeCallbacks(upHpbNextPage);
         mHandler.removeCallbacks(autoPageRunnable);
         if (autoPage) {
-            hpbNextPageProgress.setVisibility(View.VISIBLE);
+            progressBarNextPage.setVisibility(View.VISIBLE);
             nextPageTime = readBookControl.getClickSensitivity() * 1000;
-            hpbNextPageProgress.setMax(nextPageTime);
+            progressBarNextPage.setMax(nextPageTime);
             mHandler.postDelayed(upHpbNextPage, upHpbInterval);
             mHandler.postDelayed(autoPageRunnable, nextPageTime);
         } else {
-            hpbNextPageProgress.setVisibility(View.INVISIBLE);
+            progressBarNextPage.setVisibility(View.INVISIBLE);
         }
         llMenuBottom.setAutoPage(autoPage);
     }
 
     private void upHpbNextPage() {
         nextPageTime = nextPageTime - upHpbInterval;
-        hpbNextPageProgress.setProgress(nextPageTime);
+        progressBarNextPage.setProgress(nextPageTime);
         mHandler.postDelayed(upHpbNextPage, upHpbInterval);
     }
 
@@ -423,7 +423,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
             @Override
             public void autoPage() {
                 if (ReadAloudService.running) {
-                    ReadBookActivity.this.toast("朗读正在运行,不能自动翻页");
+                    ReadBookActivity.this.toast(R.string.aloud_can_not_auto_page);
                     return;
                 }
                 ReadBookActivity.this.autoPage = !ReadBookActivity.this.autoPage;
@@ -511,7 +511,6 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
             public void speechRateFollowSys() {
                 if (ReadAloudService.running) {
                     ReadAloudService.stop(ReadBookActivity.this);
-                    toast("跟随系统需要重新开始朗读");
                 }
             }
         });
@@ -604,7 +603,6 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
                 intent.setData(Uri.parse(url));
                 startActivity(intent);
             } catch (Exception e) {
-                e.printStackTrace();
                 toast(R.string.can_not_open);
             }
         });
@@ -865,7 +863,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
      */
     private void changeSource() {
         if (!NetworkUtil.isNetWorkAvailable()) {
-            toast("网络不可用，无法换源!");
+            toast(R.string.network_connection_unavailable);
             return;
         }
         ReadBookActivity.this.popMenuOut();
@@ -884,7 +882,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
      */
     private void download() {
         if (!NetworkUtil.isNetWorkAvailable()) {
-            toast("网络不可用，无法下载");
+            toast(R.string.network_connection_unavailable);
             return;
         }
         ReadBookActivity.this.popMenuOut();
@@ -905,9 +903,9 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
      */
     private void setCharset() {
         final String charset = mPresenter.getBookShelf().getBookInfoBean().getCharset();
-        moDialogHUD.showInputBox("输入编码",
+        moDialogHUD.showInputBox(getString(R.string.input_charset),
                 charset,
-                new String[]{"UTF-8", "GB2312", "GBK", "Unicode", "UTF-16", "ASCII"},
+                new String[]{"UTF-8", "GB2312", "GBK", "Unicode", "UTF-16", "UTF-16LE", "ASCII"},
                 (inputText -> {
                     inputText = inputText.trim();
                     if (!Objects.equals(charset, inputText)) {
@@ -926,7 +924,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
     private void setTextChapterRegex() {
         if (mPresenter.getBookShelf().getNoteUrl().toLowerCase().matches(".*\\.txt")) {
             final String regex = mPresenter.getBookShelf().getBookInfoBean().getChapterUrl();
-            moDialogHUD.showInputBox("TXT目录规则",
+            moDialogHUD.showInputBox(getString(R.string.text_chapter_list_rule),
                     regex,
                     null,
                     (inputText -> {
@@ -1008,7 +1006,11 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
      * 检查是否加入书架
      */
     public boolean checkAddShelf() {
-        if (isAdd || mPresenter.getBookShelf() == null || TextUtils.isEmpty(mPresenter.getBookShelf().getBookInfoBean().getName())) {
+        if (isAdd || mPresenter.getBookShelf() == null
+                || TextUtils.isEmpty(mPresenter.getBookShelf().getBookInfoBean().getName())) {
+            return true;
+        } else if (mPresenter.getBookShelf().realChapterListEmpty()) {
+            mPresenter.removeFromShelf();
             return true;
         } else {
             if (checkAddShelfPop == null) {
@@ -1254,7 +1256,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 PermissionUtils.requestMorePermissions(ReadBookActivity.this, permission, MApplication.RESULT__PERMS);
             }
         });
@@ -1295,12 +1297,12 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
 
             @Override
             public void onUserHasAlreadyTurnedDown(String... permission) {
-                ReadBookActivity.this.toast("打开外部书籍需获取存储权限");
+                ReadBookActivity.this.toast(R.string.open_local_book_per);
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
-                ReadBookActivity.this.toast("打开外部书籍需获取存储权限");
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
+                ReadBookActivity.this.toast(R.string.open_local_book_per);
                 PermissionUtils.toAppSetting(ReadBookActivity.this);
             }
         });
@@ -1365,6 +1367,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
             Intent intent = new Intent(this, MainActivity.class);
             startActivity(intent);
         }
+        RxBus.get().post(RxBusTag.AUTO_BACKUP, true);
         super.finish();
     }
 

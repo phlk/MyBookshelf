@@ -18,15 +18,15 @@ import android.widget.Toast;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.bean.BookShelfBean;
 import com.kunfei.bookshelf.bean.ChapterListBean;
+import com.kunfei.bookshelf.constant.AppConstant;
 import com.kunfei.bookshelf.help.BookshelfHelp;
 import com.kunfei.bookshelf.help.ChapterContentHelp;
-import com.kunfei.bookshelf.help.Constant;
 import com.kunfei.bookshelf.help.ReadBookControl;
 import com.kunfei.bookshelf.service.ReadAloudService;
 import com.kunfei.bookshelf.utils.RxUtils;
 import com.kunfei.bookshelf.utils.ScreenUtils;
 import com.kunfei.bookshelf.utils.StringUtils;
-import com.kunfei.bookshelf.utils.Theme.ThemeStore;
+import com.kunfei.bookshelf.utils.theme.ThemeStore;
 import com.kunfei.bookshelf.widget.page.animation.PageAnimation;
 
 import java.util.ArrayList;
@@ -79,7 +79,8 @@ public abstract class PageLoader {
     private TextPaint mTextEndPaint;
     // 阅读器的配置选项
     ReadBookControl readBookControl = ReadBookControl.getInstance();
-
+    //缩进
+    String indent;
     /*****************params**************************/
     // 判断章节列表是否加载完成
     boolean isChapterListPrepare;
@@ -117,12 +118,10 @@ public abstract class PageLoader {
     private int textPara;
     private int titleInterval;
     private int titlePara;
-    private float tipMarginHeight;
     private float tipBottomTop;
     private float tipBottomBot;
     private float tipDistance;
     private float tipMarginLeft;
-    private float tipMarginRight;
     private float displayRightEnd;
     private float tipVisibleWidth;
 
@@ -170,6 +169,7 @@ public abstract class PageLoader {
         showTimeBattery = hideStatusBar && readBookControl.getShowTimeBattery();
         mPageMode = PageAnimation.Mode.getPageMode(readBookControl.getPageMode());
         // 初始化参数
+        indent = StringUtils.repeat(StringUtils.halfToFull(" "), readBookControl.getIndent());
         mMarginTop = hideStatusBar ?
                 ScreenUtils.dpToPx(readBookControl.getPaddingTop() + DEFAULT_MARGIN_HEIGHT)
                 : ScreenUtils.dpToPx(readBookControl.getPaddingTop());
@@ -193,11 +193,11 @@ public abstract class PageLoader {
         mTitleSize = mTextSize + ScreenUtils.spToPx(EXTRA_TITLE_SIZE);
         mTextEndSize = mTextSize - ScreenUtils.spToPx(EXTRA_TITLE_SIZE);
         // 行间距(大小为字体的一半)
-        mTextInterval = (int) (mTextSize / 2 * readBookControl.getLineMultiplier());
-        mTitleInterval = (int) (mTitleSize / 2 * readBookControl.getLineMultiplier());
+        mTextInterval = (int) (mTextSize * readBookControl.getLineMultiplier() / 2);
+        mTitleInterval = (int) (mTitleSize * readBookControl.getLineMultiplier() / 2);
         // 段落间距(大小为字体的高度)
-        mTextPara = (int) (mTextSize / 2 * readBookControl.getLineMultiplier() * readBookControl.getParagraphSize());
-        mTitlePara = (int) (mTitleSize / 2 * readBookControl.getLineMultiplier() * readBookControl.getParagraphSize());
+        mTextPara = (int) (mTextSize * readBookControl.getLineMultiplier() * readBookControl.getParagraphSize() / 2);
+        mTitlePara = (int) (mTitleSize * readBookControl.getLineMultiplier() * readBookControl.getParagraphSize() / 2);
     }
 
     private void initPaint() {
@@ -286,12 +286,12 @@ public abstract class PageLoader {
 
     private void setupTipMargins() {
         Paint.FontMetrics fontMetrics = mTipPaint.getFontMetrics();
-        tipMarginHeight = (defaultMarginHeight + fontMetrics.top - fontMetrics.bottom) / 2;
+        float tipMarginHeight = (defaultMarginHeight + fontMetrics.top - fontMetrics.bottom) / 2;
         tipBottomTop = tipMarginHeight - fontMetrics.top;
         tipBottomBot = mDisplayHeight - fontMetrics.bottom - tipMarginHeight;
         tipDistance = ScreenUtils.dpToPx(DEFAULT_MARGIN_WIDTH);
         tipMarginLeft = readBookControl.getTipMarginChange() ? mMarginLeft : defaultMarginWidth;
-        tipMarginRight = readBookControl.getTipMarginChange() ? mMarginRight : defaultMarginWidth;
+        float tipMarginRight = readBookControl.getTipMarginChange() ? mMarginRight : defaultMarginWidth;
         displayRightEnd = mDisplayWidth - tipMarginRight;
         tipVisibleWidth = mDisplayWidth - tipMarginLeft - tipMarginRight;
     }
@@ -469,12 +469,12 @@ public abstract class PageLoader {
     /**
      * 翻到下一页,无动画
      */
-    public boolean noAnimationToNextPage() {
+    private void noAnimationToNextPage() {
         if (getCurPagePos() < mCurChapter.getPageSize() - 1) {
             skipToPage(getCurPagePos() + 1);
-            return true;
+            return;
         }
-        return skipNextChapter();
+        skipNextChapter();
     }
 
     /**
@@ -681,17 +681,17 @@ public abstract class PageLoader {
         }
     }
 
+    /**
+     * 更新页面
+     */
     private void upPage() {
         if (mPageMode != PageAnimation.Mode.SCROLL) {
             mPageView.drawPage(0);
-            mPageView.invalidate();
             if (mCurPagePos > 0 || mCurChapter.getPosition() > 0) {
                 mPageView.drawPage(-1);
-                mPageView.invalidate();
             }
             if (mCurPagePos < mCurChapter.getPageSize() - 1 || mCurChapter.getPosition() < bookShelfBean.getChapterList().size() - 1) {
                 mPageView.drawPage(1);
-                mPageView.invalidate();
             }
         }
     }
@@ -720,7 +720,7 @@ public abstract class PageLoader {
                     mPageView.drawPage(1);
                 }
                 break;
-            case PRE:
+            case PREV:
                 if (mCurPagePos > 0) {
                     mCurPagePos = mCurPagePos - 1;
                 } else if (mCurChapterPos > 0) {
@@ -748,7 +748,7 @@ public abstract class PageLoader {
      * 绘制页面
      * pageOnCur: 位于当前页的位置, 小于0上一页, 0 当前页, 大于0下一页
      */
-    synchronized void drawPage(Bitmap bgBitmap, Bitmap bitmap, int pageOnCur) {
+    synchronized void drawPage(Bitmap bitmap, int pageOnCur) {
         TxtChapter txtChapter;
         TxtPage txtPage;
         if (mCurChapter == null) {
@@ -777,9 +777,8 @@ public abstract class PageLoader {
             }
         }
         if (txtChapter != null) {
-            if (bgBitmap != null)
-                drawBackground(bgBitmap, txtChapter, txtPage);
             if (bitmap != null)
+                drawBackground(bitmap, txtChapter, txtPage);
                 drawContent(bitmap, txtChapter, txtPage);
         }
     }
@@ -800,9 +799,7 @@ public abstract class PageLoader {
     private synchronized void drawBackground(Bitmap bitmap, TxtChapter txtChapter, TxtPage txtPage) {
         if (bitmap == null) return;
         Canvas canvas = new Canvas(bitmap);
-        if (mPageMode == PageAnimation.Mode.SCROLL) {
-            bitmap.eraseColor(Color.TRANSPARENT);
-        } else if (!readBookControl.bgIsColor() && !readBookControl.bgBitmapIsNull()) {
+        if (!readBookControl.bgIsColor() && !readBookControl.bgBitmapIsNull()) {
             Rect mDestRect = new Rect(0, 0, bitmap.getWidth(), bitmap.getHeight());
             canvas.drawBitmap(readBookControl.getBgBitmap(), null, mDestRect, null);
         } else {
@@ -815,7 +812,7 @@ public abstract class PageLoader {
      * 绘制背景
      */
     @SuppressLint("DefaultLocale")
-    private synchronized void drawBackground(Canvas canvas, TxtChapter txtChapter, TxtPage txtPage) {
+    private synchronized void drawBackground(final Canvas canvas, TxtChapter txtChapter, TxtPage txtPage) {
         if (canvas == null) return;
 
         if (!bookShelfBean.getChapterList().isEmpty()) {
@@ -883,7 +880,7 @@ public abstract class PageLoader {
         int visibleRight = (int) displayRightEnd;
         if (hideStatusBar && showTimeBattery) {
             //绘制当前时间
-            String time = StringUtils.dateConvert(System.currentTimeMillis(), Constant.FORMAT_TIME);
+            String time = StringUtils.dateConvert(System.currentTimeMillis(), AppConstant.FORMAT_TIME);
             float timeTipLeft = (mDisplayWidth - mTipPaint.measureText(time)) / 2;
             canvas.drawText(time, timeTipLeft, tipBottomBot, mTipPaint);
 
@@ -987,7 +984,7 @@ public abstract class PageLoader {
      * 绘制内容-滚动
      */
     @SuppressWarnings("ConstantConditions")
-    void drawContent(Canvas canvas, float offset) {
+    void drawContent(final Canvas canvas, float offset) {
         if (offset > MAX_SCROLL_OFFSET) {
             offset = MAX_SCROLL_OFFSET;
         } else if (offset < 0 - MAX_SCROLL_OFFSET) {
@@ -1084,7 +1081,7 @@ public abstract class PageLoader {
                     str = page.lines.get(i);
                     strLength = strLength + str.length();
                     //进行绘制
-                    canvas.drawText(str, mDisplayWidth / 2, top, mTitlePaint);
+                    canvas.drawText(str, mDisplayWidth / 2f, top, mTitlePaint);
                 }
                 top += (i == page.titleLines - 1) ? titlePara : titleInterval;
                 if (!linePosSet && chapterPos == mCurChapterPos && top > titlePara) {
@@ -1132,7 +1129,7 @@ public abstract class PageLoader {
                     str = sign + " 本章完 " + sign;
                 }
                 top += textPara;
-                canvas.drawText(str, mDisplayWidth / 2, top, mTextEndPaint);
+                canvas.drawText(str, mDisplayWidth / 2f, top, mTextEndPaint);
                 top += textPara * 2;
             }
             if (top > totalHeight) break;
@@ -1204,7 +1201,7 @@ public abstract class PageLoader {
         for (int i = 0; i < tempLayout.getLineCount(); i++) {
             linesData.add(msg.substring(tempLayout.getLineStart(i), tempLayout.getLineEnd(i)));
         }
-        float pivotY = (mDisplayHeight - textInterval * linesData.size()) / 3 - offset;
+        float pivotY = (mDisplayHeight - textInterval * linesData.size()) / 3f - offset;
         for (String str : linesData) {
             float textWidth = mTextPaint.measureText(str);
             float pivotX = (mDisplayWidth - textWidth) / 2;
@@ -1213,6 +1210,9 @@ public abstract class PageLoader {
         }
     }
 
+    /**
+     * 获取状态文本
+     */
     private String getStatusText(TxtChapter chapter) {
         String tip = "";
         switch (chapter.getStatus()) {
@@ -1220,16 +1220,16 @@ public abstract class PageLoader {
                 tip = mContext.getString(R.string.loading);
                 break;
             case ERROR:
-                tip = String.format("加载失败\n%s", mCurChapter.getMsg());
+                tip = mContext.getString(R.string.load_error_msg, mCurChapter.getMsg());
                 break;
             case EMPTY:
-                tip = "文章内容为空";
+                tip = mContext.getString(R.string.content_empty);
                 break;
             case CATEGORY_EMPTY:
-                tip = "目录列表为空";
+                tip = mContext.getString(R.string.chapter_list_empty);
                 break;
             case CHANGE_SOURCE:
-                tip = "正在换源请等待...";
+                tip = mContext.getString(R.string.on_change_source);
         }
         return tip;
     }
@@ -1267,7 +1267,7 @@ public abstract class PageLoader {
                 mTitlePaint.setColor(isLight ? ThemeStore.accentColor(mContext) : readBookControl.getTextColor());
 
                 //进行绘制
-                canvas.drawText(str, mDisplayWidth / 2, top, mTitlePaint);
+                canvas.drawText(str, mDisplayWidth / 2f, top, mTitlePaint);
 
                 //设置尾部间距
                 if (i == txtPage.titleLines - 1) {
@@ -1501,18 +1501,16 @@ public abstract class PageLoader {
                 mPageView.drawPage(1);
             }
         }
-        mPageView.invalidate();
     }
 
     private void drawScaledText(Canvas canvas, String line, float lineWidth, TextPaint paint, float top) {
         float x = mMarginLeft;
 
         if (isFirstLineOfParagraph(line)) {
-            String blanks = StringUtils.halfToFull("  ");
-            canvas.drawText(blanks, x, top, paint);
-            float bw = StaticLayout.getDesiredWidth(blanks, paint);
+            canvas.drawText(indent, x, top, paint);
+            float bw = StaticLayout.getDesiredWidth(indent, paint);
             x += bw;
-            line = line.substring(2);
+            line = line.substring(readBookControl.getIndent());
         }
         int gapCount = line.length() - 1;
         int i = 0;

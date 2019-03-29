@@ -13,7 +13,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.kunfei.basemvplib.impl.IPresenter;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.MBaseActivity;
-import com.kunfei.bookshelf.utils.FileUtil;
+import com.kunfei.bookshelf.utils.FileUtils;
 import com.kunfei.bookshelf.utils.PermissionUtils;
 
 import androidx.annotation.NonNull;
@@ -102,11 +102,11 @@ public class QRCodeScanActivity extends MBaseActivity implements QRCodeView.Dele
 
             @Override
             public void onUserHasAlreadyTurnedDown(String... permission) {
-                Toast.makeText(QRCodeScanActivity.this, "扫描二维码需相机权限", Toast.LENGTH_SHORT).show();
+                Toast.makeText(QRCodeScanActivity.this, R.string.qr_per, Toast.LENGTH_SHORT).show();
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 PermissionUtils.requestMorePermissions(QRCodeScanActivity.this, cameraPer, REQUEST_CAMERA_PER);
             }
         });
@@ -153,11 +153,11 @@ public class QRCodeScanActivity extends MBaseActivity implements QRCodeView.Dele
 
             @Override
             public void onUserHasAlreadyTurnedDown(String... permission) {
-                Toast.makeText(QRCodeScanActivity.this, "扫描二维码需相机权限", Toast.LENGTH_SHORT).show();
+                Toast.makeText(QRCodeScanActivity.this, R.string.qr_per, Toast.LENGTH_SHORT).show();
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 PermissionUtils.toAppSetting(QRCodeScanActivity.this);
             }
         });
@@ -201,7 +201,7 @@ public class QRCodeScanActivity extends MBaseActivity implements QRCodeView.Dele
         zxingview.startSpotAndShowRect(); // 显示扫描框，并开始识别
 
         if (resultCode == Activity.RESULT_OK && requestCode == REQUEST_QR_IMAGE) {
-            final String picturePath = FileUtil.getPath(this, data.getData());
+            final String picturePath = FileUtils.getPath(this, data.getData());
             // 本来就用到 QRCodeView 时可直接调 QRCodeView 的方法，走通用的回调
             zxingview.decodeQRCode(picturePath);
         }

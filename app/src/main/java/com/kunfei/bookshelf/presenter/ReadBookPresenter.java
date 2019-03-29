@@ -27,9 +27,9 @@ import com.kunfei.bookshelf.bean.DownloadBookBean;
 import com.kunfei.bookshelf.bean.LocBookShelfBean;
 import com.kunfei.bookshelf.bean.OpenChapterBean;
 import com.kunfei.bookshelf.bean.SearchBookBean;
+import com.kunfei.bookshelf.constant.RxBusTag;
 import com.kunfei.bookshelf.dao.DbHelper;
 import com.kunfei.bookshelf.help.BookshelfHelp;
-import com.kunfei.bookshelf.help.RxBusTag;
 import com.kunfei.bookshelf.model.BookSourceManager;
 import com.kunfei.bookshelf.model.ImportBookModel;
 import com.kunfei.bookshelf.model.WebBookModel;
@@ -182,6 +182,7 @@ public class ReadBookPresenter extends BasePresenterImpl<ReadBookContract.View> 
                                             RxBus.get().post(RxBusTag.HAD_ADD_BOOK, value);
                                         bookShelf = value.getBookShelfBean();
                                         mView.setAdd(BookshelfHelp.isInBookShelf(bookShelf.getNoteUrl()));
+                                        mView.startLoadingBook();
                                     }
 
                                     @Override
